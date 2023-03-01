@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class Player : MonoBehaviour
 {
@@ -13,9 +12,11 @@ public class Player : MonoBehaviour
     [SerializeField] private Transform _groundCheckPos;
     [SerializeField] private LayerMask _groundLayerMask;
     [SerializeField] private float _groundCheckRadius;
+    private bool _groundedPlayer;
+
+    private bool _facingRight = true;
     
     private Vector3 _playerVelocity;
-    [SerializeField] private bool _groundedPlayer;
     
     [SerializeField] private float _moveSpeed = 3.0f;
     [SerializeField] private float _runSpeed = 5.0f;
@@ -24,8 +25,7 @@ public class Player : MonoBehaviour
     //
     // private int _healthPoints = 3;
     
-    
-    
+
     private void Awake()
     {
         _playerInputActions = new PlayerInputActions();
@@ -36,7 +36,6 @@ public class Player : MonoBehaviour
     void Start()
     {
         _characterController = GetComponent<CharacterController>();
-        // _rigidBody = GetComponent<Rigidbody>();
     }
 
     // Update is called once per frame
@@ -45,12 +44,15 @@ public class Player : MonoBehaviour
         
         _groundedPlayer = GroundCheck();
         
+        
+        
         // Attack();
         // Crouch();
         
         Move();
         Gravity();
         Jump();
+        TurnBack();
     }
 
     private void FixedUpdate()
@@ -71,8 +73,6 @@ public class Player : MonoBehaviour
         if (inputVector != Vector2.zero)
         {
             // Debug.Log(_playerInputActions.PlayerActionMap.Move.ReadValue<Vector2>());
-            // _rigidBody.velocity = new Vector3( inputVector.x * (speedValue * Time.deltaTime), 0, 0);
-            // _rigidBody.MovePosition(transform.position + new Vector3( inputVector.x * Time.deltaTime * speedValue, 0, 0) );
             _characterController.Move(moveDirection * (speedValue * Time.deltaTime) );
         }
         else
@@ -84,8 +84,6 @@ public class Player : MonoBehaviour
     {
         if (_playerInputActions.PlayerActionMap.Run.IsInProgress())
         {
-            if (_playerInputActions.PlayerActionMap.Run.WasPressedThisFrame())
-                Debug.Log("Running");
             Movement(_runSpeed);
         }
         else
@@ -104,26 +102,20 @@ public class Player : MonoBehaviour
     {
         if (_playerInputActions.PlayerActionMap.Jump.WasPerformedThisFrame() && _groundedPlayer)
         {
-            Debug.Log("Jump");
             _playerVelocity.y += Mathf.Sqrt(_jumpHeight * -3.0f * _gravityValue);
-            // _rigidBody.velocity = new Vector3(0, _jumpHeight, 0);
         }
-        // Changes the height position of the player..
-        // if (Input.GetButtonDown("Jump") && groundedPlayer)
-        // {
-        //     playerVelocity.y += Mathf.Sqrt(jumpHeight * -3.0f * gravityValue);
-        // }
     }
     private void Gravity()
     {
-        if (_groundedPlayer && _playerVelocity.y < 0)
+        if (_playerVelocity.y < 0 && _groundedPlayer)
         {
+            // _playerVelocity.y -= _playerVelocity.y;
             _playerVelocity.y = 0f;
         }
         _playerVelocity.y += _gravityValue * Time.deltaTime;
         _characterController.Move(_playerVelocity * Time.deltaTime);
     }
-
+    
     private bool GroundCheck()
     {
         return Physics.CheckSphere(_groundCheckPos.position, _groundCheckRadius, _groundLayerMask);
@@ -135,5 +127,33 @@ public class Player : MonoBehaviour
         {
             Debug.Log("Crouch");
         }
+    }
+
+    private void TurnBack()
+    {
+        Vector2 inputDirection = _playerInputActions.PlayerActionMap.Move.ReadValue<Vector2>();
+        
+        if (inputDirection.x < 0 && _facingRight ) // Left is minus
+        {
+            Flip();
+        }
+        else if (inputDirection.x > 0 && !_facingRight) // Right is plus
+        {
+            Flip();
+        }
+    }
+
+    private void Flip()
+    {
+        if (_facingRight)
+        {
+            transform.localRotation = Quaternion.Euler(0,0,0);
+        }
+        else if (!_facingRight)
+        {
+            transform.localRotation = Quaternion.Euler(0,180.0f,0);
+        }
+        _facingRight = !_facingRight;
+        Debug.Log("Flipped");
     }
 }
